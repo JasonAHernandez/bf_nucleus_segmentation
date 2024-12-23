@@ -20,6 +20,8 @@ In createmask_main.py near the bottom of the script on lines 103-105 update the 
 Line 103 expects the absolute file path to the model. Line 104 expects the file path of where you would like the output binary masks to be saved.
 Line 105 expects the brightfield images that should be made predictions on. 
 
+If you use spyder_CreateMask.py you will need to change line 1 in createmask_main.py to 'from spyder_CreateMask import CreateMask' instead of 'from CreateMask import CreateMask'.
+
 With this you can run the script from createmask_main.py.
 The script can handle having multiple image types and sizes in the given brightfield image folder, it will skip any that don't match the correct size and file type. 
 When an appropriate image is reached, it will display the unchanged image, the image with the subtracted background, and the image with just the edge of the ROI shown on the original image. 
