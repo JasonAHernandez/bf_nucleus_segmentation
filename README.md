@@ -2,7 +2,7 @@
 
 ## Quick Startup
 
-In package management I have created a .yml file which can be run in anaconda to install the packages essential for this code. 
+In the package_management folder in this repository I have created a .yml file which can be run in anaconda to install the packages essential for this code. 
 Anaconda can be installed here: https://www.anaconda.com/download/success
 Here is an example usage of this file: 
 
