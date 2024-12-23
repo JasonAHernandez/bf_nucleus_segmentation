@@ -100,12 +100,9 @@ def composite_loss(y_true, y_pred, alpha=0.7, beta=0.3, lambda1=0.5, lambda2=0.5
 
 
 if __name__ == '__main__':
-    model_path = r"C:\Users\jason\PycharmProjects\nucleus_outline\unet\models\rn34\uint16\RN34_NSM_hela_jpg_V1.keras"
-    mask_output_path = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\raw_data\2024-12-20_HeLaS3_JQ1vsmQ\masks"
-    brightfield_images = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\raw_data\2024-12-20_HeLaS3_JQ1vsmQ\BF_images"
-
-    small_ss = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\cs_projects\nucleus_segmentation\small_test_cell_folder"
-    small_mask_output = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\cs_projects\nucleus_segmentation\small_test_mask_output"
+    model_path = r"path\to\model\RN34_NSM_hela_V1.keras"
+    mask_output_path = r"path\to\where\masks\should\be\saved\to"
+    brightfield_images = r"path\to\where\brightfield\images\are\located"
 
     model = tf.keras.models.load_model(
         model_path,
@@ -118,9 +115,4 @@ if __name__ == '__main__':
     )
 
     mask_creator = CreateMask(model, mask_save_folder=mask_output_path)
-
-    # Without verification
-    # mask_creator.create_mask(brightfield_images)
-
-    # With interactive verification
     mask_creator.create_mask(brightfield_images, verify=True)
