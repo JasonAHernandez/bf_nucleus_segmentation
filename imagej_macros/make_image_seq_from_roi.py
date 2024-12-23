@@ -11,7 +11,7 @@ def process_nd2_files(folder_path, mask_folder, utrack_folder, start_frame=51, e
     last_folder_name = os.path.basename(os.path.normpath(folder_path))
 
     # Create cleaned movies folder
-    cleaned_folder = os.path.join(folder_path, f"cleaned_movies_{last_folder_name}")
+    cleaned_folder = os.path.join(folder_path, "cleaned_movies_{}".format(last_folder_name))
     if not os.path.exists(cleaned_folder):
         os.makedirs(cleaned_folder)
 
@@ -42,7 +42,7 @@ def process_nd2_files(folder_path, mask_folder, utrack_folder, start_frame=51, e
 
             # Calculate mask index using the provided formula
             mask_index = mask_index_formula(idx)
-            mask_index_str = f"{mask_index:03d}"  # Ensure the index is zero-padded to 3 digits
+            mask_index_str = "{:03d}".format(mask_index)  # Ensure the index is zero-padded to 3 digits
             mask_filename = '_'.join(filename.split('_')[:-1] + [mask_index_str + '.tif'])
             mask_path = os.path.join(mask_folder, mask_filename)
 
@@ -64,18 +64,18 @@ def process_nd2_files(folder_path, mask_folder, utrack_folder, start_frame=51, e
                     dup.updateAndDraw()
 
             # Create folder for each image in utrack folder
-            cell_folder = os.path.join(utrack_folder, f'{last_folder_name}_cell{idx}')
+            cell_folder = os.path.join(utrack_folder, "{}_cell{}".format(last_folder_name, idx))
             if not os.path.exists(cell_folder):
                 os.makedirs(cell_folder)
 
             # Save as image sequence
             IJ.run(dup, "Image Sequence... ",
-                   f"select=[{cell_folder}] dir=[{cell_folder}] format=TIFF name=image start=1")
+                   "select=[{}] dir=[{}] format=TIFF name=image start=1".format(cell_folder, cell_folder))
 
-            print(f"Processed and saved: {filename} into {cell_folder}, cleaned file into {cleaned_file_path}, "
-                  f"and applied mask {mask_filename}")
+            print("Processed and saved: {} into {}, cleaned file into {}, and applied mask {}".format(
+                filename, cell_folder, cleaned_file_path, mask_filename))
         else:
-            print(f"Could not open: {filename}")
+            print("Could not open: {}".format(filename))
     print("Processing complete")
 
 
