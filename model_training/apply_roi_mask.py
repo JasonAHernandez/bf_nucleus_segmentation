@@ -6,7 +6,7 @@ import re
 
 
 class MaskCreator:
-    def __init__(self, image_dir, roi_dir, output_dir, image_indicator, roi_indicator, max_size, subtract_value=0):
+    def __init__(self, image_dir, roi_dir, output_dir, image_indicator, roi_indicator, max_size=None, subtract_value=0):
         self.image_dir = image_dir
         self.roi_dir = roi_dir
         self.output_dir = output_dir
