@@ -188,14 +188,49 @@ class NucleusSegmentationModel:
         model.compile(optimizer=optimizer, loss=composite_loss, metrics=['accuracy'])
         return model
 
-    def save_model(self, file_path):
+    def save_model(self, model_save_path, train_images, val_images):
         """
         Save the trained model to a specified file path.
 
-        :param file_path: Path to save the model file.
+        :param val_images: validation images
+        :param train_images: training images
+        :param model_save_path: Path to save the model file.
         """
-        self.model.save(file_path)
-        print(f"Model saved to {file_path}")
+        #saving model
+        self.model.save(model_save_path)
+        print(f"Model saved to {model_save_path}")
+
+
+        # Final epoch predictions and comparisons
+        print("\nReloading model and comparing predictions...")
+        reloaded_model = tf.keras.models.load_model(
+            model_save_path,
+            custom_objects={
+                "composite_loss": composite_loss,
+                "tversky_loss": tversky_loss,
+                "boundary_loss": boundary_loss,
+                "WarmUpLearningRate": WarmUpLearningRate
+            }
+        )
+
+        # Directories for predictions
+        save_dir = os.path.dirname(model_save_path)
+        oblong_fitting_dir = os.path.join(save_dir, "final_predictions_oblong_fitting")
+        os.makedirs(oblong_fitting_dir, exist_ok=True)
+
+        # Combine training and validation images
+        all_images = np.concatenate((train_images, val_images), axis=0)
+
+        # Save predictions with oblong fitting applied
+        for idx, image in enumerate(all_images):
+            pred = reloaded_model.predict(np.expand_dims(image, axis=0))[0]
+            pred_resized = cv2.resize(pred, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
+            oblong_mask = self.fit_oblong_shape(pred_resized)
+            mask_applied_image = self.blackout_background(image, oblong_mask)
+            save_path = os.path.join(oblong_fitting_dir, f"final_oblong_pred_{idx + 1:03d}.tif")
+            Image.fromarray(mask_applied_image).save(save_path)
+
+        print(f"Final oblong-fitted predictions saved in {oblong_fitting_dir}.")
 
     @classmethod
     def load_model(cls, file_path, input_size=(256, 256, 3), backbone='resnet34'):
@@ -398,12 +433,6 @@ class NucleusSegmentationModel:
                 callbacks=all_callbacks
             )
 
-            # Save the trained model
-            parent_dir = os.path.abspath(os.path.join(save_dir, ".."))
-            model_path = os.path.join(parent_dir, "trained_model.keras")
-            self.model.save(model_path)
-            print(f"Model saved to {model_path}")
-
             # Check for accuracy > 90% and apply oblong-fitting post-processing
             final_epoch_metrics = history.history["accuracy"][-1]
             if final_epoch_metrics > 0.9 and not oblong_applied:
@@ -412,46 +441,6 @@ class NucleusSegmentationModel:
                 val_predictions = self.model.predict(val_images)
                 val_masks = np.array([self.fit_oblong_shape(pred) for pred in val_predictions])
 
-        # Final epoch predictions and comparisons
-        print("\nReloading model and comparing predictions...")
-        reloaded_model = tf.keras.models.load_model(
-            model_path,
-            custom_objects={
-                "composite_loss": composite_loss,
-                "tversky_loss": tversky_loss,
-                "boundary_loss": boundary_loss,
-                "WarmUpLearningRate": WarmUpLearningRate
-            }
-        )
-
-        # Directories for predictions
-        final_predictions_dir = os.path.join(save_dir, "final_predictions")
-        oblong_fitting_dir = os.path.join(save_dir, "final_predictions_oblong_fitting")
-        os.makedirs(final_predictions_dir, exist_ok=True)
-        os.makedirs(oblong_fitting_dir, exist_ok=True)
-
-        # Combine training and validation images
-        all_images = np.concatenate((train_images, val_images), axis=0)
-
-        # Save predictions without oblong fitting
-        for idx, image in enumerate(all_images):
-            pred = reloaded_model.predict(np.expand_dims(image, axis=0))[0]
-            pred_resized = cv2.resize(pred, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
-            mask_applied_image = self.blackout_background(image, pred_resized)
-            save_path = os.path.join(final_predictions_dir, f"final_pred_{idx + 1:03d}.tif")
-            Image.fromarray(mask_applied_image).save(save_path)
-
-        # Save predictions with oblong fitting applied
-        for idx, image in enumerate(all_images):
-            pred = reloaded_model.predict(np.expand_dims(image, axis=0))[0]
-            pred_resized = cv2.resize(pred, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
-            oblong_mask = self.fit_oblong_shape(pred_resized)
-            mask_applied_image = self.blackout_background(image, oblong_mask)
-            save_path = os.path.join(oblong_fitting_dir, f"final_oblong_pred_{idx + 1:03d}.tif")
-            Image.fromarray(mask_applied_image).save(save_path)
-
-        print(f"Final predictions saved in {final_predictions_dir}.")
-        print(f"Final oblong-fitted predictions saved in {oblong_fitting_dir}.")
         return history
 
     def test_image(self, original_image, processed_image, save_path=None):
