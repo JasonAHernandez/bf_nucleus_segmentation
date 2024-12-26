@@ -35,11 +35,12 @@ are using to many epochs.
   -on line 44, iterations is initialized. I also recommend leaving this parameter as 1, but if your model is having a bit of trouble, your sample size is relatively small, and you can't
 quite increase the epochs as the model is starting to over-fit then try increasing this to 2. If that does not solve the issue and the model simply starts over-fitting in the 2nd iteration then likely you will need to adjust some parameters that are not given in the call. 
 
+Changing the initial_lr and target_lr (lr stands for learning rate) on line 8, can also be quite useful for increasing model efficiency.
 Given that changing the above parameters is not helping I would suggest changing some of the values in tversky_loss(), composite_loss(), or ElasticDeformation() in
 NucleusSegmentationModel.py. These can have very drastic changes to the behavior of the model. Which can greatly increase the efficiency, but does take some knowledge. My suggestion is
 to individually google the parameters and how changing them affects model behavior so that you can make an educated guess on what to change and by how much. Note that a lot of machine
 learning optimization is literally just trying all the variations of the changes in these numbers and manually checking which produced the best result as there is little way to know
-beforehand what may lead the model to the best predictions.
+beforehand what may lead the model to the best predictions. 
 
 On line 47, the location of where the model should be saved to and its name should be given. 
 
