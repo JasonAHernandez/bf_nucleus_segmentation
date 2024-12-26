@@ -200,7 +200,6 @@ class NucleusSegmentationModel:
         self.model.save(model_save_path)
         print(f"Model saved to {model_save_path}")
 
-
         # Final epoch predictions and comparisons
         print("\nReloading model and comparing predictions...")
         reloaded_model = tf.keras.models.load_model(
