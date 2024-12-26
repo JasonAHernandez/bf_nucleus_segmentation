@@ -7,15 +7,17 @@ if __name__ == '__main__':
     output_dir = r"output\folder\for\where\masks\should\be\saved"  # Folder to save output masks
 
     # Define parameters
-    roi_indicator = "roi"  # Indicator to replace 'bf' in ROI filenames
-    max_size = 370  # Maximum size of images to process
-    subtract_value = 80  # Subtraction value for ROI index calculation
+    image_indicator = "bf"  # The part to be replaced
+    roi_indicator = "_RPE1_H1.2_"  # The replacement part
+    max_size = 370
+    subtract_value = 80
 
     # Create an instance of MaskCreator
     mask_creator = MaskCreator(
         image_dir=image_dir,
         roi_dir=roi_dir,
         output_dir=output_dir,
+        image_indicator=image_indicator,
         roi_indicator=roi_indicator,
         max_size=max_size,
         subtract_value=subtract_value
