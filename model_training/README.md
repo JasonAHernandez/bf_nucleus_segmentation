@@ -84,7 +84,7 @@ and a brightfield image called:
 
 and you set image_indicator as 'bf', roi_indicator as 'roi', and roi_index_formula = lambda index: as (index - 80) // 2 then it will for image: 
 
-bf_image_081.tif correctly look for roi_image_001.tif.roi. 
+bf_image_081.tif correctly look for roi_image_001.tif.roi. Also, it doesn't matter where in your filename the roi_indicator is.
 
 If your index should have no change then set the formula to (index * 1). 
 
