@@ -2,6 +2,8 @@
 
 ## Quick Startup
 
+### Package Management
+
 In the package_management folder in this repository I have created a .yml file which can be run in anaconda to install the packages essential for this code. 
 Anaconda can be installed here: https://www.anaconda.com/download/success
 Here is an example usage of this file: 
@@ -11,10 +13,14 @@ conda env create --file /path/to/NucSeg_environment.yml
 Make sure your python IDE (ex: Pycharm/Spyder/VScode) points to the conda environment.
 Here is the download for pycharm (make sure to scroll down for the community edition as the first shown one is a paid for version with a free trial): https://www.jetbrains.com/pycharm/download/?section=windows#section=windows
 
+### Models
+
 Add the files in Nucleus_Segmenter_App called CreateMask.py and createmask_main.py to your python IDE. 
 Also download the model file itself. Since github won't allow such large files I have uploaded to my google drive here:
 
 https://drive.google.com/drive/folders/18JyO2-udz5NiRr88vHjSQWx0nH6MF3ag?usp=sharing
+
+### How to use
 
 In createmask_main.py near the bottom of the script on lines 103-105 update the paths to the location of the requested folder. 
 Line 103 expects the absolute file path to the model. Line 104 expects the file path of where you would like the output binary masks to be saved.
