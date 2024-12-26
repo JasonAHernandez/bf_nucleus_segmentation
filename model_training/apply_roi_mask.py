@@ -6,13 +6,12 @@ import re
 
 
 class MaskCreator:
-    def __init__(self, image_dir, roi_dir, output_dir, image_indicator="bf", roi_indicator="roi", max_size=1000, roi_index_formula=None):
+    def __init__(self, image_dir, roi_dir, output_dir, image_indicator="bf", roi_indicator="roi", roi_index_formula=None):
         self.image_dir = image_dir
         self.roi_dir = roi_dir
         self.output_dir = output_dir
         self.image_indicator = image_indicator  # The part of the filename to replace
         self.roi_indicator = roi_indicator  # The replacement part
-        self.max_size = max_size
         self.roi_index_formula = roi_index_formula or (lambda index: index // 2)  # Default formula
 
         # Ensure output directory exists
@@ -51,10 +50,8 @@ class MaskCreator:
 
                 # Attempt to open the image to check its dimensions, skipping if unidentifiable
                 try:
-                    with Image.open(image_path) as img:
-                        width, height = img.size
-                        if width > self.max_size or height > self.max_size:
-                            continue
+                    with Image.open(image_path):
+                        pass
                 except UnidentifiedImageError:
                     print(f"Skipping unidentifiable image file: {image_filename}")
                     continue
