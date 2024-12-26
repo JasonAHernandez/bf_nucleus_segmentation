@@ -9,10 +9,9 @@ if __name__ == '__main__':
     # Define parameters
     image_indicator = "bf"  # The part to be replaced
     roi_indicator = "_RPE1_H1.2_"  # The replacement part
-    max_size = 370
 
     # Define a custom ROI index formula
-    roi_index_formula = lambda index: (index - 80) // 2  # Example: Subtract 80 and divide by 2
+    roi_index_formula = lambda index: (index - 80) // 2  # Example: Subtract 80 and multiply by 3
 
     # Create an instance of MaskCreator
     mask_creator = MaskCreator(
@@ -21,7 +20,6 @@ if __name__ == '__main__':
         output_dir=output_dir,
         image_indicator=image_indicator,
         roi_indicator=roi_indicator,
-        max_size=max_size,
         roi_index_formula=roi_index_formula
     )
 
