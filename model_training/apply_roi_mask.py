@@ -6,14 +6,14 @@ import re
 
 
 class MaskCreator:
-    def __init__(self, image_dir, roi_dir, output_dir, image_indicator, roi_indicator, max_size=None, subtract_value=0):
+    def __init__(self, image_dir, roi_dir, output_dir, image_indicator="bf", roi_indicator="roi", max_size=1000, roi_index_formula=None):
         self.image_dir = image_dir
         self.roi_dir = roi_dir
         self.output_dir = output_dir
         self.image_indicator = image_indicator  # The part of the filename to replace
         self.roi_indicator = roi_indicator  # The replacement part
         self.max_size = max_size
-        self.subtract_value = subtract_value  # Value to subtract before dividing by 2
+        self.roi_index_formula = roi_index_formula or (lambda index: index // 2)  # Default formula
 
         # Ensure output directory exists
         os.makedirs(self.output_dir, exist_ok=True)
@@ -64,10 +64,10 @@ class MaskCreator:
                 if match:
                     base_name, index_str = match.groups()
 
-                    # Convert index to integer, adjust based on the new logic, and format as a 3-digit string
+                    # Convert index to integer and calculate ROI index using the formula
                     index = int(index_str)
-                    roi_index = f"{(index - self.subtract_value) // 2:03}"  # Subtract custom value and divide by 2
-                    # roi_index = f"{(index - self.subtract_value) :03}" # without dividing by 2
+                    roi_index = self.roi_index_formula(index)
+                    roi_index = f"{roi_index:03}"  # Ensure 3-digit zero-padded format
 
                     # Construct paths
                     roi_filename = f"{base_name}{self.roi_indicator}{roi_index}.tif.roi"  # Include .tif before .roi
