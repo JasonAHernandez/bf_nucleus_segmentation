@@ -22,15 +22,13 @@ the same directory that the model is saved to. So if the model is saved to /path
 /path/to/model/final_predictions_oblong_fitting/ automatically. If you don't want this functionality, feel free to comment out lines 204-232.
 
 Initialization of history on line 36 of NSM_main.py:
-  -on line 39, epochs is initialized. This parameter is relatively important. If you are doing intial function testing just to make sure the code runs and that is it, you can set this to
-1. When attempting to generate a full fledged model, something between 50-100 epochs is recommended. For now, I suggest to use 50. However, in some instances it may make sense to
+  -on line 39, epochs is initialized. This parameter is relatively important. If you are doing intial function testing just to make sure the code runs and that is it, you can set this
+to 1. When attempting to generate a full fledged model, something between 50-100 epochs is recommended. For now, I suggest to use 50. However, in some instances it may make sense to
 use even 300. If after training, and you notice in your epochs that at some point the predictions become all black, then it is likely that your model has become over-fitted and that you
 are using to many epochs.
-  -on line 39, batch_size is initialized. This parameter is also relatively important. For now, I simply recommend leaving it at 4. However, if your sample size is relatively small (less
-than 100) then I may try 16.
+  -on line 39, batch_size is initialized. This parameter is also relatively important. For now, I simply recommend leaving it at 4. However, if your sample size is relatively small (less than 100) then I may try 16.
   -on line 44, iterations is initialized. I also recommend leaving this parameter as 1, but if your model is having a bit of trouble, your sample size is relatively small, and you can't
-quite increase the epochs as the model is starting to over-fit then try increasing this to 2. If that does not solve the issue and the model simply starts over-fitting in the 2nd iteration
-then likely you will need to adjust some parameters that are not given in the call. 
+quite increase the epochs as the model is starting to over-fit then try increasing this to 2. If that does not solve the issue and the model simply starts over-fitting in the 2nd iteration then likely you will need to adjust some parameters that are not given in the call. 
 
 Given that changing the above parameters is not helping I would suggest changing some of the values in tversky_loss(), composite_loss(), or ElasticDeformation() in
 NucleusSegmentationModel.py. These can have very drastic changes to the behavior of the model. Which can greatly increase the efficiency, but does take some knowledge. My suggestion is
