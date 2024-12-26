@@ -67,6 +67,7 @@ class MaskCreator:
                     # Convert index to integer, adjust based on the new logic, and format as a 3-digit string
                     index = int(index_str)
                     roi_index = f"{(index - self.subtract_value) // 2:03}"  # Subtract custom value and divide by 2
+                    # roi_index = f"{(index - self.subtract_value) :03}" # without dividing by 2
 
                     # Construct paths
                     roi_filename = f"{base_name}{self.roi_indicator}{roi_index}.tif.roi"  # Include .tif before .roi
