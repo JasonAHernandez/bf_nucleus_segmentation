@@ -6,11 +6,12 @@ import re
 
 
 class MaskCreator:
-    def __init__(self, image_dir, roi_dir, output_dir, roi_indicator="roi", max_size=1000, subtract_value=0):
+    def __init__(self, image_dir, roi_dir, output_dir, image_indicator="bf", roi_indicator="roi", max_size=1000, subtract_value=0):
         self.image_dir = image_dir
         self.roi_dir = roi_dir
         self.output_dir = output_dir
-        self.roi_indicator = roi_indicator
+        self.image_indicator = image_indicator  # The part of the filename to replace
+        self.roi_indicator = roi_indicator  # The replacement part
         self.max_size = max_size
         self.subtract_value = subtract_value  # Value to subtract before dividing by 2
 
@@ -18,7 +19,7 @@ class MaskCreator:
         os.makedirs(self.output_dir, exist_ok=True)
 
         # Define a regex pattern to match image names and indices
-        self.pattern = re.compile(r"^(.*)bf(\d{3})\.tif$")
+        self.pattern = re.compile(rf"^(.*){self.image_indicator}(\d{{3}})\.tif$")
 
     def create_mask_from_roi(self, image_path, roi_path, output_path):
         # Load the TIFF image to get dimensions
@@ -70,8 +71,7 @@ class MaskCreator:
                     # Construct paths
                     roi_filename = f"{base_name}{self.roi_indicator}{roi_index}.tif.roi"  # Include .tif before .roi
                     roi_path = os.path.join(self.roi_dir, roi_filename)
-                    output_path = os.path.join(self.output_dir,
-                                               image_filename)  # Use the exact image filename for the mask
+                    output_path = os.path.join(self.output_dir, image_filename)  # Use the exact image filename for the mask
 
                     # Print the current ROI file name for verification
                     print(f"Processing ROI file: {roi_filename}")
