@@ -59,12 +59,16 @@ On line 7, the folder where you want the output masks is taken.
 On line 10, there is a variable called 'image_indicator' and on line 11 there is a variable called 'roi_indicator'. The macro will assume that whatever image_indicator is initialzed as
 is part of the filename in every .roi file. The macro will then look for a corresponding brightfield image that is the same name as the roi filename without the .roi extension and with
 the image_indicator replaced as the image_indicator. With one extra change before I show an example. 
-On line 14, there is a variable called 'roi_index_formula' assuming that your roi files ends in 3 digit number (padded with zeroes before the index i.e. 001) then this variable expects
+On line 15, there is a variable called 'roi_index_formula' assuming that your roi files ends in 3 digit number (padded with zeroes before the index i.e. 001) then this variable expects
 the formula to get to the index of the roi file FROM the brightfield image index. So if the index for the brightfield image is 081 then the example in prepro_main.py:
 roi_index_formula = lambda index: (index - 80) // 2
 assumes that the index of the roi file is 001. Altogether, an example of how to line 10, 11, and 15 work together is if you have a roi file called 'roi_image_001.tif.roi' and a 
 brightfield image called 'bf_image_081.tif' and you set image_indicator as 'bf', roi_indicator as 'roi', and roi_index_formula = lambda index: as (index - 80) // 2 then it will for
 image bf_image_081.tif it will correctly look roi_image_001.tif.roi. 
 If your index should have no change then set the formula to (index * 1). 
+
+On line 12 there is a variable called 'max_size', this should be set to the max image size that should be interpreted. For example, if there are several images in your folder of
+different sizes, you can skip the ones of different size by setting max_size to for example 370, which will make it so that only images that are equal to or smaller than 370x370 are
+attempted to load. 
 
 When you are ready to use simply run prepro_main.py.
