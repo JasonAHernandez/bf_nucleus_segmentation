@@ -47,3 +47,24 @@ NucleusSegmentationModel.py and NSM_main.py look like.
 
 The main interface of this code is NSM_main.py. When you have set up all of your variables as you've desired. You should run NSM_main.py and that will work with 
 NucleusSegmentationModel.py and begin training the model. 
+
+## Useful Macros (how to use)
+
+I have made a macro that takes .roi files and brightfield images, and creates the respective binary mask from them, the file is called apply_roi_mask. This is useful if you already 
+have .roi files for your brightfield images. Otherwise, you will have to create masks for all of your brightfield images before training from scratch. It is run using prepro_main.py.
+On line 5 of prepro_main.py, the directory to your brightfield images is expected.
+On ine 6, the directory of your .roi files is expected.
+On line 7, the folder where you want the output masks is taken.
+
+On line 10, there is a variable called 'image_indicator' and on line 11 there is a variable called 'roi_indicator'. The macro will assume that whatever image_indicator is initialzed as
+is part of the filename in every .roi file. The macro will then look for a corresponding brightfield image that is the same name as the roi filename without the .roi extension and with
+the image_indicator replaced as the image_indicator. With one extra change before I show an example. 
+On line 15, there is a variable called 'roi_index_formula' assuming that your roi files ends in 3 digit number (padded with zeroes before the index i.e. 001) then this variable expects
+the formula to get to the index of the roi file FROM the brightfield image index. So if the index for the brightfield image is 081 then the example in prepro_main.py:
+roi_index_formula = lambda index: (index - 80) // 2
+assumes that the index of the roi file is 001. Altogether, an example of how to line 10, 11, and 15 work together is if you have a roi file called 'roi_image_001.tif.roi' and a 
+brightfield image called 'bf_image_081.tif' and you set image_indicator as 'bf', roi_indicator as 'roi', and roi_index_formula = lambda index: as (index - 80) // 2 then it will for
+image bf_image_081.tif it will correctly look roi_image_001.tif.roi. 
+If your index should have no change then set the formula to (index * 1). 
+
+When you are ready to use simply run prepro_main.py.
