@@ -12,7 +12,7 @@ if __name__ == '__main__':
     max_size = 370
 
     # Define a custom ROI index formula
-    roi_index_formula = lambda index: (index - 80) // 2  # Example: Subtract 80 and multiply by 3
+    roi_index_formula = lambda index: (index - 80) // 2  # Example: Subtract 80 and divide by 2
 
     # Create an instance of MaskCreator
     mask_creator = MaskCreator(
