@@ -48,6 +48,8 @@ NucleusSegmentationModel.py and begin training the model.
 
 ## Useful Macros (how to use)
 
+### Macro that takes .roi files and makes binary masks
+
 I have made a macro that takes .roi files and brightfield images, and creates the respective binary mask from them, the file is called apply_roi_mask. This is useful if you already 
 have .roi files for your brightfield images. Otherwise, you will have to create masks for all of your brightfield images before training from scratch. It is run using prepro_main.py.
 On line 5 of prepro_main.py, the directory to your brightfield images is expected.
