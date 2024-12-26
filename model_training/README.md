@@ -59,7 +59,7 @@ On line 7, the folder where you want the output masks is taken.
 On line 10, there is a variable called 'image_indicator' and on line 11 there is a variable called 'roi_indicator'. The macro will assume that whatever image_indicator is initialzed as
 is part of the filename in every .roi file. The macro will then look for a corresponding brightfield image that is the same name as the roi filename without the .roi extension and with
 the image_indicator replaced as the image_indicator. With one extra change before I show an example. 
-On line 15, there is a variable called 'roi_index_formula' assuming that your roi files ends in 3 digit number (padded with zeroes before the index i.e. 001) then this variable expects
+On line 14, there is a variable called 'roi_index_formula' assuming that your roi files ends in 3 digit number (padded with zeroes before the index i.e. 001) then this variable expects
 the formula to get to the index of the roi file FROM the brightfield image index. So if the index for the brightfield image is 081 then the example in prepro_main.py:
 roi_index_formula = lambda index: (index - 80) // 2
 assumes that the index of the roi file is 001. Altogether, an example of how to line 10, 11, and 15 work together is if you have a roi file called 'roi_image_001.tif.roi' and a 
