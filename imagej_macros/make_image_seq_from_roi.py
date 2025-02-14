@@ -1,98 +1,113 @@
 from ij import IJ, ImagePlus
-from ij.plugin import Duplicator
-from ij.plugin.filter import BackgroundSubtracter
 import os
 
-#remember to change folders at bottom
 
-def process_nd2_files(folder_path, mask_folder, utrack_folder, start_frame=51, end_frame=300,
-                      mask_index_formula=lambda x: x * 2):
-    # Extract the last folder name from the path
-    last_folder_name = os.path.basename(os.path.normpath(folder_path))
+def process_cleaned_tiffs(cleaned_folder, mask_folder, utrack_folder, mask_index_formula=lambda x: x * 2):
+    """
+    Process cleaned TIFF images by applying corresponding masks and saving as an image sequence.
 
-    # Create cleaned movies folder
-    cleaned_folder = os.path.join(folder_path, "cleaned_movies_{}".format(last_folder_name))
-    if not os.path.exists(cleaned_folder):
-        os.makedirs(cleaned_folder)
-
+    Parameters:
+    - cleaned_folder: Path to folder containing cleaned TIFFs.
+    - mask_folder: Path to folder containing mask TIFFs.
+    - utrack_folder: Destination folder for uTrack processing.
+    - mask_index_formula: Function to compute mask indices (default: x * 2).
+    """
+    # Ensure the uTrack folder exists
     if not os.path.exists(utrack_folder):
         os.makedirs(utrack_folder)
 
-    files = [f for f in os.listdir(folder_path) if f.endswith('.nd2')]
+    # Get all cleaned TIFFs
+    files = [f for f in os.listdir(cleaned_folder) if f.endswith('_cleaned.tif')]
+
+    # Define the masked movies directory inside the parent folder of cleaned_folder
+    parent_folder = os.path.dirname(cleaned_folder)  # Get parent directory
+    masked_folder = os.path.join(parent_folder, "masked_movies")
+
+    # Ensure the masked_movies directory exists
+    if not os.path.exists(masked_folder):
+        os.makedirs(masked_folder)
+
     for idx, filename in enumerate(files, 1):
-        full_path = os.path.join(folder_path, filename)
-        imp = IJ.openImage(full_path)
+        cleaned_path = os.path.join(cleaned_folder, filename)
+        imp = IJ.openImage(cleaned_path)
 
         if imp:
-            # Duplicate the image, keeping frames from start_frame to end_frame
-            dup = Duplicator().run(imp, start_frame, end_frame)
+            print("Processing cleaned file: {}".format(cleaned_path))
 
-            # Enhance contrast
-            IJ.run(dup, "Enhance Contrast", "saturated=0.35")
+            # Extract movie name (without extension)
+            movie_name = filename.replace('_cleaned.tif', '')
 
-            # Subtract background
-            bs = BackgroundSubtracter()
-            for i in range(1, dup.getStackSize() + 1):
-                dup.setSlice(i)
-                bs.rollingBallBackground(dup.getProcessor(), 50, False, False, True, False, True)
+            # Calculate mask index
+            # Extract the movie index from the filename (last 3-digit number after "_")
+            movie_index = filename.replace('_cleaned.tif', '').split('_')[-1]  # Get last part before _cleaned.tif
+            movie_index = int(movie_index)  # Convert to integer
 
-            # Save intermediate cleaned file
-            cleaned_file_path = os.path.join(cleaned_folder, filename.replace('.nd2', '_cleaned.tif'))
-            IJ.saveAsTiff(dup, cleaned_file_path)
-
-            # Calculate mask index using the provided formula
-            mask_index = mask_index_formula(idx)
-            mask_index_str = "{:03d}".format(mask_index)  # Ensure the index is zero-padded to 3 digits
-            mask_filename = '_'.join(filename.split('_')[:-1] + [mask_index_str + '.tif'])
+            # Calculate the mask index correctly
+            mask_index = mask_index_formula(movie_index)
+            mask_index_str = "{:03d}".format(mask_index)  # Zero-pad to 3 digits
+            mask_filename = '_'.join(movie_name.split('_')[:-1] + [mask_index_str + '.tif'])
             mask_path = os.path.join(mask_folder, mask_filename)
 
+            # Open the corresponding mask
             mask_imp = IJ.openImage(mask_path)
 
             if mask_imp:
-                for i in range(1, dup.getStackSize() + 1):
-                    dup.setSlice(i)
+                for i in range(1, imp.getStackSize() + 1):
+                    imp.setSlice(i)
                     mask_imp.setSlice(i)
-                    ip_original = dup.getProcessor()
+                    ip_original = imp.getProcessor()
                     ip_mask = mask_imp.getProcessor()
 
                     # Set pixels in the original image to black where the mask is black
                     for x in range(ip_mask.getWidth()):
                         for y in range(ip_mask.getHeight()):
-                            if ip_mask.getPixel(x, y) == 0:  # Assuming black in mask is 0
-                                ip_original.putPixel(x, y, 0)  # Set to black in original image
+                            if ip_mask.getPixel(x, y) == 0:  # If mask pixel is black
+                                ip_original.putPixel(x, y, 0)  # Set to black
 
-                    dup.updateAndDraw()
+                    imp.updateAndDraw()
+            else:
+                print(mask_path)
+                print("mask_imp not found. exiting")
+                break
 
-            # Create folder for each image in utrack folder
-            cell_folder = os.path.join(utrack_folder, "{}_cell{}".format(last_folder_name, idx))
-            if not os.path.exists(cell_folder):
-                os.makedirs(cell_folder)
+            # Save the masked image for testing
+            masked_tiff_path = os.path.join(masked_folder, "{}_masked.tif".format(movie_name))
+            IJ.saveAsTiff(imp, masked_tiff_path)
+            print("Saved masked image for testing: {}".format(masked_tiff_path))
 
+            # Create folder named after the movie (without extension) in uTrack
+            movie_folder = os.path.join(utrack_folder, movie_name)
+            if not os.path.exists(movie_folder):
+                os.makedirs(movie_folder)
+            # Re-open the saved masked TIFF to ensure it includes all modifications
+            imp.close()  # Close current imp before reloading
+            imp = IJ.openImage(masked_tiff_path)
+
+            # Ensure the image is active before exporting
+            imp.show()
+            IJ.selectWindow(imp.getTitle())
+            # Save the processed image as an image sequence for uTrack
             # Save as image sequence
-            IJ.run(dup, "Image Sequence... ",
-                   "select=[{}] dir=[{}] format=TIFF name=image start=1".format(cell_folder, cell_folder))
+            IJ.run(imp, "Image Sequence... ",
+                   "select=[{}] dir=[{}] format=TIFF name=image start=1".format(movie_folder, movie_folder))
 
-            print("Processed and saved: {} into {}, cleaned file into {}, and applied mask {}".format(
-                filename, cell_folder, cleaned_file_path, mask_filename))
+            print("Processed and saved: {} into {}, applied mask {}".format(filename, movie_folder, mask_filename))
+
         else:
             print("Could not open: {}".format(filename))
-    print("Processing complete")
+        imp.close()
 
+    print("Processing complete.")
 
-folder_path1 = r"C:\path\to\movies1"
-folder_path2 = r"C:\path\to\movies2"
-folder_path3 = r"C:\path\to\movies3"
-folder_path4 = r"C:\path\to\movies4"
+# Paths
+# cleaned_folder1 = r"C:\path\to\cleaned_movies"
+# cleaned_folder2 # can run multiple folders just need to add function at bottom
 
 mask_folder = r"C:\path\to\masks"
-utrack_folder = r"C:\path\to\desired\output\for\movie\frames" #for example this can be your current experiment folder that is the exact desired input for u-track
-start_frame = 51  # Adjust as needed for the duplicated movie
-end_frame = 300  # Adjust as needed for the duplicated movie
+utrack_folder = r"C:\path\to\output\for\image\sequence" #the folder given for u-track
 
-mask_index_formula = lambda x: x * 2  # Formula to calculate the mask index
-# mask_index_formula = lambda x: ( x - 80 ) * 2 # Formula to calculate the mask index
+mask_index_formula = lambda x: (x * 2) - 1 # Adjust as needed
 
-process_nd2_files(folder_path1, mask_folder, utrack_folder, start_frame, end_frame, mask_index_formula)
-process_nd2_files(folder_path2, mask_folder, utrack_folder, start_frame, end_frame, mask_index_formula)
-process_nd2_files(folder_path3, mask_folder, utrack_folder, start_frame, end_frame, mask_index_formula)
-process_nd2_files(folder_path4, mask_folder, utrack_folder, start_frame, end_frame, mask_index_formula)
+# Run the function
+process_cleaned_tiffs(cleaned_folder1, mask_folder, utrack_folder, mask_index_formula)
+#process_cleaned_tiffs(cleaned_folder2, mask_folder, utrack_folder, mask_index_formula)
