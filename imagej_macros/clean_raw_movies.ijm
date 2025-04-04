@@ -1,21 +1,18 @@
 macro "Process ND2 Files" {
     // Set user-defined parameters
     folderPaths = newArray(
-        "C:\\path\\to\\raw\\movies\\data\\"
-    );   
-
-    startFrame = 25;
-    endFrame = 250;
-
-    maskIndexFormulas = newArray(
-        "x * 1"
+        "C:\\Users\\jason\\OneDrive\\Documents\\MaeshimaLab\\experiments\\SNI_SMI1\\raw_data\\2025-04-03_HelaS3_H3-2-Halo_FA\\2025-04-03_HeLaS3_H3-2-Halo_c25_FA\\",
+        "C:\\Users\\jason\\OneDrive\\Documents\\MaeshimaLab\\experiments\\SNI_SMI1\\raw_data\\2025-04-03_HelaS3_H3-2-Halo_FA\\2025-04-03_HeLaS3_H3-2-Halo_c25_noTreatment\\"
     );
+
+    startFrame = 51;
+    endFrame = 250;
 
 for (f = 0; f < lengthOf(folderPaths); f++) {
     folderPath = folderPaths[f];
 
     cleanedFolder = folderPath + "cleaned_movies\\";
-    File.makeDirectory(cleanedFolder);
+    File.makeDirectory(cleanedFolder);	
 
     list = getFileList(folderPath);
 
