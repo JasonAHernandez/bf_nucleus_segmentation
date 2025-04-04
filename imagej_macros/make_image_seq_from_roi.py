@@ -99,15 +99,20 @@ def process_cleaned_tiffs(cleaned_folder, mask_folder, utrack_folder, mask_index
 
     print("Processing complete.")
 
-# Paths
-# cleaned_folder1 = r"C:\path\to\cleaned_movies"
-# cleaned_folder2 # can run multiple folders just need to add function at bottom
+# Path
+cleaned_folder1 = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\raw_data\2025-04-03_HelaS3_H3-2-Halo_FA\2025-04-03_HeLaS3_H3-2-Halo_c25_FA\cleaned_movies"
+cleaned_folder2 = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\raw_data\2025-04-03_HelaS3_H3-2-Halo_FA\2025-04-03_HeLaS3_H3-2-Halo_c25_noTreatment\cleaned_movies"
+# cleaned_folder3 = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\raw_data\2025-02-14_HeLaS3_H3-2-Halo_TMRconc\movies\2025-02-14_HeLaS3_H3-2-Halo_40pM\cleaned_movies"
 
-mask_folder = r"C:\path\to\masks"
-utrack_folder = r"C:\path\to\output\for\image\sequence" #the folder given for u-track
+mask_folder = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\raw_data\2025-04-03_HelaS3_H3-2-Halo_FA\masks"
+utrack_folder = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\all_data_analysis\for_utrack\2025-04-03_Jason"
 
-mask_index_formula = lambda x: (x * 2) - 1 # Adjust as needed
+mask_index_formula = lambda x: (x * 2) # Adjust as needed
+ 
+#from cleaned movie to mask math
+
 
 # Run the function
 process_cleaned_tiffs(cleaned_folder1, mask_folder, utrack_folder, mask_index_formula)
-#process_cleaned_tiffs(cleaned_folder2, mask_folder, utrack_folder, mask_index_formula)
+process_cleaned_tiffs(cleaned_folder2, mask_folder, utrack_folder, mask_index_formula)
+# process_cleaned_tiffs(cleaned_folder3, mask_folder, utrack_folder, mask_index_formula)
