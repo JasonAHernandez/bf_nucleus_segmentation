@@ -1,3 +1,5 @@
+from tensorflow.python.eager.context import get_config
+
 from CreateMask import CreateMask
 import tensorflow as tf
 import tensorflow.keras.backend as K
@@ -100,9 +102,12 @@ def composite_loss(y_true, y_pred, alpha=0.7, beta=0.3, lambda1=0.5, lambda2=0.5
 
 
 if __name__ == '__main__':
-    model_path = r"path\to\model\RN34_NSM_hela_V1.keras"
-    mask_output_path = r"path\to\where\masks\should\be\saved\to"
-    brightfield_images = r"path\to\where\brightfield\images\are\located"
+    model_path = r"C:\Users\jason\PycharmProjects\nucleus_outline\unet\models\rn34\uint16\RN34_NSM_hela_jpg_V1.keras"
+    mask_output_path = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\raw_data\2025-04-03_HelaS3_H3-2-Halo_FA\masks"
+    brightfield_images = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\raw_data\2025-04-03_HelaS3_H3-2-Halo_FA\BF_images\noTreatment"
+    cleaned_movies = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\raw_data\2025-04-03_HelaS3_H3-2-Halo_FA\2025-04-03_HeLaS3_H3-2-Halo_c25_noTreatment\cleaned_movies"
+
+    bf_images_to_movies_index_formula = "int(index / 2)"
 
     model = tf.keras.models.load_model(
         model_path,
@@ -115,4 +120,4 @@ if __name__ == '__main__':
     )
 
     mask_creator = CreateMask(model, mask_save_folder=mask_output_path)
-    mask_creator.create_mask(brightfield_images, verify=True)
+    mask_creator.create_mask(brightfield_images, cleaned_movies, bf_images_to_movies_index_formula, verify=True)
