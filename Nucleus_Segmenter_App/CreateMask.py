@@ -8,6 +8,8 @@ from matplotlib.widgets import Button
 from tensorflow.keras.preprocessing.image import img_to_array, load_img
 from segmentation_models import get_preprocessing
 from tifffile import imread as tif_imread
+import nd2reader
+import re
 
 
 class CreateMask:
@@ -61,6 +63,22 @@ class CreateMask:
             raise ValueError(f"Unsupported file format for {image_path}")
         image = np.array(Image.fromarray(image.astype(np.uint8)).resize(self.input_size[:2]))
         return image / 255.0
+
+    def load_first_frame_from_tif(self, movie_path):
+        """
+        Loads the first frame from a multi-frame .tif movie file.
+
+        :param movie_path: Path to the .tif movie file.
+        :return: First frame as a NumPy array.
+        """
+        try:
+            with tifffile.TiffFile(movie_path) as tif:
+                first_frame = tif.pages[0].asarray()  # Extract the first frame
+                first_frame = (first_frame / np.max(first_frame) * 255).astype(np.uint8)  # Normalize to uint8
+            return first_frame
+        except Exception as e:
+            print(f"Error reading {movie_path}: {e}")
+            return None
 
     def preprocess_image(self, image):
         """
@@ -149,158 +167,252 @@ class CreateMask:
         else:
             return cv2.erode(mask, kernel, iterations=1)
 
-    def draw_inner_edge(self, image, mask):
+    def draw_inner_edge(self, image, mask, color=(0, 0, 0)):
         """
         Overlay the inner edge of the mask on the original image.
 
         :param image: Original input image.
         :param mask: Binary mask as a NumPy array.
+        :param color: Edge color in (B, G, R) format.
         :return: Image with edge overlay.
         """
-        # Ensure mask is binary
         mask = (mask > 0.5).astype(np.uint8)
 
-        # Match mask size to image size
         if mask.shape != image.shape[:2]:
             mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
 
-        # Properly scale uint16 images
         if image.dtype == np.uint16:
             image = ((image - image.min()) / (image.max() - image.min()) * 255).astype(np.uint8)
 
-        # Convert grayscale image to RGB
         if len(image.shape) == 2 or (len(image.shape) == 3 and image.shape[-1] == 1):
             edge_image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         else:
             edge_image = image.copy()
 
-        # Find contours
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if contours:
-            cv2.drawContours(edge_image, contours, -1, (0, 0, 0), 2)  # Black edge
+            cv2.drawContours(edge_image, contours, -1, color, 2)  # Custom color for edges
         else:
             print("No contours found; skipping drawing step.")
 
         return edge_image
 
-    def plot_verification(self, original_image, background_subtracted, edge_image):
+    def plot_verification(self, bf_image, bf_bg_subtracted, bf_edge_image,
+                          movie_image=None, movie_bg_subtracted=None, movie_edge_image=None):
         """
-        Display the verification plot with three panels: original image, background subtracted, and edge.
+        Display the verification plot with panels for BF and movie images.
 
-        :param original_image: Original input image.
-        :param background_subtracted: Image with mask applied.
-        :param edge_image: Image with inner edge overlay.
+        :param bf_image: Brightfield input image.
+        :param bf_bg_subtracted: BF image with mask applied.
+        :param bf_edge_image: BF image with inner edge overlay.
+        :param movie_image: First frame from cleaned movie.
+        :param movie_bg_subtracted: Movie frame with mask applied.
+        :param movie_edge_image: Movie frame with edge overlay.
         """
-        # Adjust background_subtracted for consistent brightness
-        if background_subtracted.dtype != np.uint8:
-            background_subtracted = (background_subtracted / background_subtracted.max() * 255).astype(np.uint8)
+        plt.figure(figsize=(12, 6))
 
-        plt.figure(figsize=(12, 4))
-
-        # Original Image
-        plt.subplot(1, 3, 1)
-        plt.title("Original Image")
-        plt.imshow(original_image, cmap="gray")
+        # Brightfield images
+        plt.subplot(2, 3, 1)
+        plt.title("BF Image")
+        plt.imshow(bf_image, cmap="gray")
         plt.axis("off")
 
-        # Background Subtracted
-        plt.subplot(1, 3, 2)
-        plt.title("Background Subtracted")
-        plt.imshow(background_subtracted, cmap="gray")
+        plt.subplot(2, 3, 2)
+        plt.title("BF Mask Applied")
+        plt.imshow(bf_bg_subtracted, cmap="gray")
         plt.axis("off")
 
-        # Edge Image
-        plt.subplot(1, 3, 3)
-        plt.title("Inner Edge")
-        plt.imshow(edge_image, cmap="gray", vmin=0, vmax=255)
+        plt.subplot(2, 3, 3)
+        plt.title("BF Mask Outline")
+        plt.imshow(bf_edge_image, cmap="gray")
         plt.axis("off")
+
+        # Movie images if available
+        if movie_image is not None:
+            plt.subplot(2, 3, 4)
+            plt.title("Movie Frame")
+            plt.imshow(movie_image, cmap="gray")
+            plt.axis("off")
+
+            plt.subplot(2, 3, 5)
+            plt.title("Movie Mask Applied")
+            plt.imshow(movie_bg_subtracted, cmap="gray")
+            plt.axis("off")
+
+            plt.subplot(2, 3, 6)
+            plt.title("Movie Mask Outline (Red)")
+            plt.imshow(movie_edge_image, cmap="gray")
+            plt.axis("off")
 
         plt.tight_layout()
         plt.show()
 
-    def verify_mask(self, original_image, current_mask):
+    def extract_index(self, filename):
         """
-        Verify the mask and allow for optional interactive adjustment of edge points.
+        Extracts the numeric index from a filename based on the last underscore `_`
+        before the file extension.
 
-        :param original_image: Original input image.
+        Example:
+            "2025-02-15_HeLaS3_H3-2-Halo_c25_RH_001.tif"  -> "001"
+            "2025-02-15_HeLaS3_H3-2-Halo_c25_RH_002.nd2"  -> "002"
+
+        :param filename: Name of the file.
+        :return: Extracted index as a string, or None if no match.
+        """
+        match = re.search(r'_([^_]+)\.[^.]+$', filename)  # Extract text after last "_" before the file extension
+        if match:
+            return match.group(1)  # Return the matched index
+        else:
+            print(f"Warning: Could not extract index from {filename}")
+            return None
+
+    def verify_mask(self, original_image, current_mask, movie_frame=None):
+        """
+        Verify the mask and allow interactive adjustment using both the brightfield image and the first frame of a cleaned .tif movie.
+
+        :param original_image: Brightfield input image.
         :param current_mask: Generated mask as a NumPy array.
+        :param movie_frame: First frame from cleaned .tif movie (optional).
         :return: Verified mask or None if skipped.
         """
         print("Verification mode is active.")
+
+        # Contrast enhancement settings (Modify these as needed)
+        contrast_method = "clahe"
+        clip_limit = 3.0
+        gamma = 1.5
+
+        user_adjusted = False  # Track if the user manually modified the mask
+
         while True:
-            # Fit the mask to an oblong shape and fill the interior
-            oblong_mask = self.fit_oblong_shape(current_mask)
-            oblong_mask = self.fill_in(oblong_mask)
+            # Step 1: Process the mask only if user hasn't edited it
+            if not user_adjusted:
+                oblong_mask = self.fit_oblong_shape(current_mask)
+                oblong_mask = self.fill_in(oblong_mask)
+            else:
+                oblong_mask = current_mask.copy()
 
-            # Create the edge overlay image
-            background_subtracted = cv2.bitwise_and(original_image, original_image, mask=oblong_mask)
-            edge_image = self.draw_inner_edge(original_image, oblong_mask)
+            # Step 2: Background-subtracted images
+            bf_background_subtracted = cv2.bitwise_and(original_image, original_image, mask=oblong_mask)
+            movie_background_subtracted = None
+            enhanced_movie_frame = None
 
-            # Display the images for verification
-            self.plot_verification(original_image, background_subtracted, edge_image)
+            if movie_frame is not None:
+                enhanced_movie_frame = enhance_image_contrast(
+                    movie_frame, method=contrast_method, clip_limit=clip_limit, gamma=gamma
+                )
+                movie_background_subtracted = cv2.bitwise_and(enhanced_movie_frame, enhanced_movie_frame,
+                                                              mask=oblong_mask)
 
-            # Present options to the user after showing images
+            # Step 3: Overlay mask edge for visualization
+            bf_edge_image = self.draw_inner_edge(original_image, oblong_mask, color=(0, 0, 0))
+            movie_edge_image = None
+            if movie_frame is not None:
+                movie_edge_image = self.draw_inner_edge(enhanced_movie_frame, oblong_mask, color=(255, 0, 0))
+
+            # Step 4: Show both BF and movie views
+            self.plot_verification(
+                original_image, bf_background_subtracted, bf_edge_image,
+                enhanced_movie_frame, movie_background_subtracted, movie_edge_image
+            )
+
+            # Step 5: User input
             print("Options:")
-            print(" - Press 'i' to interactively adjust the mask edge.")
             print(" - Press 's' to save the mask as is.")
             print(" - Press 'g' to grow the mask.")
             print(" - Press 'r' to reduce the mask.")
             print(" - Press 'k' to skip this image.")
+            print(" - Press 'ib' to interactively edit using the BF image.")
+            print(" - Press 'im' to interactively edit using the movie frame.")
             choice = input("Your choice: ").strip().lower()
 
-            if choice == 'i':
-                # Generate edge points for interactive adjustment
+            if choice == 'ib':
                 contours, _ = cv2.findContours(oblong_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 if contours:
-                    # Select evenly spaced points along the largest contour
-                    edge_points = contours[0][::max(1, len(contours[0]) // 30)].squeeze()
-                    if len(edge_points.shape) != 2:  # Handle edge cases where contours are too small
-                        edge_points = np.expand_dims(edge_points, axis=0)
+                    edge_points = self.evenly_spaced_contour_points(contours[0], num_points=30)
+                    print("Launching interactive edge adjustment using BF image...")
+                    adjusted_points = interactive_edit_dual_view(
+                        edit_image=bf_edge_image,
+                        reference_image=movie_edge_image if movie_edge_image is not None else bf_edge_image,
+                        points=edge_points,
+                        edit_title="Edit on Brightfield",
+                        ref_title="Reference: Movie Frame",
+                        edit_color='blue',
+                        ref_color='red'
+                    )
+                    current_mask = np.zeros_like(oblong_mask)
+                    cv2.fillPoly(current_mask, [adjusted_points.astype(int)], 1)
+                    user_adjusted = True
+                    print("Mask updated with adjusted points from BF image.")
 
-                    # Launch interactive editing
-                    print("Launching interactive edge adjustment...")
-                    adjusted_points = interactive_edit(edge_image, edge_points)
-
-                    # Recreate the mask based on adjusted points
-                    oblong_mask = np.zeros_like(oblong_mask)
-                    cv2.fillPoly(oblong_mask, [adjusted_points.astype(int)], 1)
-
-                    # Update the current mask for continuity
-                    current_mask = oblong_mask
-                    print("Mask updated with adjusted points.")
-                else:
-                    print("No contours found for interactive editing.")
+            elif choice == 'im' and movie_frame is not None:
+                contours, _ = cv2.findContours(oblong_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                if contours:
+                    edge_points = self.evenly_spaced_contour_points(contours[0], num_points=30)
+                    print("Launching interactive edge adjustment using movie frame...")
+                    adjusted_points = interactive_edit_dual_view(
+                        edit_image=movie_edge_image,
+                        reference_image=bf_edge_image,
+                        points=edge_points,
+                        edit_title="Edit on Movie Frame",
+                        ref_title="Reference: Brightfield",
+                        edit_color='blue',
+                        ref_color='black'
+                    )
+                    current_mask = np.zeros_like(oblong_mask)
+                    cv2.fillPoly(current_mask, [adjusted_points.astype(int)], 1)
+                    user_adjusted = True
+                    print("Mask updated with adjusted points from movie frame.")
 
             elif choice == 's':
                 print("Mask saved.")
                 return oblong_mask
+
             elif choice == 'g':
                 current_mask = self.adjust_mask_size(current_mask, change=5)
+                user_adjusted = False
                 print("Mask grown.")
+
             elif choice == 'r':
                 current_mask = self.adjust_mask_size(current_mask, change=-5)
+                user_adjusted = False
                 print("Mask reduced.")
+
             elif choice == 'k':
                 print("Image skipped.")
                 return None
-            else:
-                print("Invalid input. Please enter 'i', 's', 'g', 'r', or 'k'.")
 
-    def create_mask(self, tif_folder_path, verify=False):
+            else:
+                print("Invalid input. Please enter 's', 'g', 'r', 'k', 'ib', or 'im'.")
+
+    def create_mask(self, tif_folder_path, movie_folder_path=None, movie_index_formula="index", verify=False):
         """
-        Generate masks for all .tif images in a folder.
+        Generate masks for all .tif images in a folder and optionally overlay the mask on
+        the first frame of a cleaned .tif movie.
 
         :param tif_folder_path: Path to the folder containing .tif images.
+        :param movie_folder_path: Path to the folder containing cleaned .tif movie files (optional).
+        :param movie_index_formula: User-defined transformation for converting BF index to movie index.
         :param verify: Whether to verify masks interactively.
         """
         skipped_images = []
-        for filename in os.listdir(tif_folder_path):
-            image_path = os.path.join(tif_folder_path, filename)
 
+        # Get all cleaned .tif movies and their extracted indices
+        movie_index_map = {}
+        if movie_folder_path:
+            for movie_file in os.listdir(movie_folder_path):
+                if movie_file.endswith(".tif") and "_cleaned" in movie_file:
+                    movie_index = self.extract_index(movie_file.replace("_cleaned", ""))  # Remove "_cleaned" for matching
+                    if movie_index is not None:
+                        # print(movie_index)
+                        movie_index_map[movie_index] = os.path.join(movie_folder_path, movie_file)
+
+        for filename in os.listdir(tif_folder_path):
             if not filename.endswith(".tif"):
                 print(f"Skipped non-TIF file: {filename}")
                 continue
 
+            image_path = os.path.join(tif_folder_path, filename)
             try:
                 original_image = tifffile.imread(image_path)
             except Exception as e:
@@ -313,7 +425,36 @@ class CreateMask:
                     f"Skipped {filename}: Image size {original_image.shape[:2]} does not match expected size {self.expected_size}.")
                 continue
 
-            print(f"Processing image: {filename}")
+            # Extract the index for this BF image
+            bf_index = self.extract_index(filename)
+            if bf_index is None:
+                print(f"Skipped {filename}: Could not extract index.")
+                continue
+
+            # Apply the user-defined formula to transform the BF index into the movie index
+            try:
+                movie_index = str(eval(movie_index_formula, {"index": int(bf_index)}))  # Safely evaluate formula
+                movie_index = movie_index.zfill(3)
+            except Exception as e:
+                print(f"Error applying movie index formula '{movie_index_formula}' on {bf_index}: {e}")
+                continue
+
+            movie_frame = None
+
+            # Find the closest matching cleaned movie using the transformed movie index
+            closest_movie = movie_index_map.get(movie_index)
+            if closest_movie:
+                movie_frame = self.load_first_frame_from_tif(closest_movie)
+                print(f"Matched {filename} → {closest_movie} using formula: {movie_index_formula}")
+            else:
+                print(filename)
+                print(closest_movie)
+                print(movie_index_map.get(movie_index))
+                print(movie_index_map)
+                print(movie_index)
+                print("found no matching movie for the bf image")
+                exit()
+            # Preprocess the image for the model
             preprocessed_image = self.preprocess_image(original_image)
 
             predicted_mask = self.model.predict(np.expand_dims(preprocessed_image, axis=0))[0]
@@ -322,7 +463,7 @@ class CreateMask:
             oblong_mask = self.fill_in(oblong_mask)
 
             if verify:
-                verified_mask = self.verify_mask(original_image, oblong_mask)
+                verified_mask = self.verify_mask(original_image, oblong_mask, movie_frame)
                 if verified_mask is None:
                     skipped_images.append(filename)
                     continue
@@ -337,6 +478,36 @@ class CreateMask:
             with open(self.log_file_path, 'w') as log_file:
                 log_file.write("\n".join(skipped_images))
             print(f"Skipped images logged to {self.log_file_path}")
+
+    def evenly_spaced_contour_points(self, contour, num_points=30):
+        """
+        Interpolate `num_points` evenly spaced points along the given contour.
+
+        :param contour: Input contour (Nx1x2 or Nx2 array of points).
+        :param num_points: Number of points to sample.
+        :return: (num_points, 2) array of evenly spaced points.
+        """
+        contour = contour.squeeze()
+
+        # Compute cumulative arc length
+        distances = np.sqrt(np.sum(np.diff(contour, axis=0) ** 2, axis=1))
+        cumulative = np.insert(np.cumsum(distances), 0, 0)
+
+        # Normalize cumulative distance to 0–1
+        total_length = cumulative[-1]
+        if total_length == 0:
+            return np.repeat(contour[:1], num_points, axis=0)
+
+        normalized = cumulative / total_length
+
+        # Interpolate evenly spaced values between 0 and 1
+        target_distances = np.linspace(0, 1, num_points)
+
+        # Interpolate x and y separately
+        x_interp = np.interp(target_distances, normalized, contour[:, 0])
+        y_interp = np.interp(target_distances, normalized, contour[:, 1])
+
+        return np.stack((x_interp, y_interp), axis=1)
 
 
 class DraggablePoint:
@@ -377,7 +548,49 @@ class DraggablePoint:
             self.plot.figure.canvas.draw()
 
 
-def interactive_edit(edge_image, points):
+def enhance_image_contrast(image, method="histogram", clip_limit=2.0, gamma=1.0):
+    """
+    Enhance the contrast of a grayscale image using different methods.
+
+    :param image: Input grayscale image.
+    :param method: Contrast enhancement method ('histogram', 'clahe', 'gamma').
+    :param clip_limit: CLAHE contrast limit (higher = stronger enhancement).
+    :param gamma: Gamma correction factor (lower <1 = darker, higher >1 = brighter).
+    :return: Contrast-enhanced image.
+    """
+    if len(image.shape) == 3 and image.shape[-1] == 3:  # Convert RGB to grayscale if needed
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+    if method == "histogram":
+        enhanced_image = cv2.equalizeHist(image)  # Standard histogram equalization
+
+    elif method == "clahe":
+        clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(8, 8))
+        enhanced_image = clahe.apply(image)  # Adaptive histogram equalization (CLAHE)
+
+    elif method == "gamma":
+        inv_gamma = 1.0 / gamma
+        table = np.array([(i / 255.0) ** inv_gamma * 255 for i in range(256)]).astype("uint8")
+        enhanced_image = cv2.LUT(image, table)  # Apply gamma correction
+
+    else:
+        print(f"Unknown contrast method '{method}', using default histogram equalization.")
+        enhanced_image = cv2.equalizeHist(image)
+
+    return enhanced_image
+
+def interactive_edit(edge_image, points, enhance_contrast=False):
+    """
+    Launch an interactive GUI to adjust ROI edge points.
+
+    :param edge_image: The image over which the edges are drawn.
+    :param points: Initial list of points for the edge.
+    :param enhance_contrast: Whether to apply contrast enhancement (for movie frames).
+    :return: Updated list of points after interaction.
+    """
+    if enhance_contrast:
+        edge_image = enhance_image_contrast(edge_image)  # Apply contrast enhancement
+
     fig, ax = plt.subplots()
     ax.imshow(edge_image, cmap="gray")
     ax.set_title("Adjust ROI Edge Points")
@@ -394,7 +607,7 @@ def interactive_edit(edge_image, points):
 
     for point in points:
         plot, = ax.plot(point[0], point[1], 'ro')  # Red points for interaction
-        draggable = DraggablePoint(point, plot, points, modified_edge_plot)  # Use modified edge plot
+        draggable = DraggablePoint(point, plot, points, modified_edge_plot)
         plots.append(plot)
         draggable_points.append(draggable)
 
@@ -410,11 +623,68 @@ def interactive_edit(edge_image, points):
     done_button = Button(done_ax, 'Done')
     done_button.on_clicked(on_done)
 
-    # Add legend
     ax.legend(loc='upper right')
-
     plt.show()
 
     return np.array(points)
+
+def interactive_edit_dual_view(edit_image, reference_image, points,
+                               edit_title="Edit ROI", ref_title="Reference View",
+                               edit_color='blue', ref_color='red'):
+    """
+    Interactive GUI to adjust ROI edge points with a side-by-side reference image.
+
+    :param edit_image: The image to edit on.
+    :param reference_image: The reference image (not editable).
+    :param points: Initial ROI edge points.
+    :param edit_title: Title for the editable image panel.
+    :param ref_title: Title for the reference image panel.
+    :param edit_color: Color for the editable edge line.
+    :param ref_color: Color for the reference edge line.
+    :return: Adjusted list of points.
+    """
+    fig, (ax_edit, ax_ref) = plt.subplots(1, 2, figsize=(12, 6))
+
+    # Display editable image
+    ax_edit.imshow(edit_image, cmap="gray")
+    ax_edit.set_title(edit_title)
+    editable_line, = ax_edit.plot(*zip(*points), color=edit_color, lw=2, label="Editable Edge")
+
+    # Plot draggable points
+    point_artists = []
+    draggable_points = []
+    for point in points:
+        artist, = ax_edit.plot(point[0], point[1], 'ro')
+        dp = DraggablePoint(point, artist, points, editable_line)
+        point_artists.append(artist)
+        draggable_points.append(dp)
+
+        fig.canvas.mpl_connect('button_press_event', dp.on_press)
+        fig.canvas.mpl_connect('button_release_event', dp.on_release)
+        fig.canvas.mpl_connect('motion_notify_event', dp.on_motion)
+
+    # Reference image with static edge
+    ax_ref.imshow(reference_image, cmap="gray")
+    ax_ref.set_title(ref_title)
+    ax_ref.plot(*zip(*points), color=ref_color, lw=2, linestyle='--', label="Reference Edge")
+
+    for ax in (ax_edit, ax_ref):
+        ax.axis("off")
+        ax.legend()
+
+    # Done button
+    def on_done(event):
+        plt.close(fig)
+
+    done_ax = plt.axes([0.45, 0.02, 0.1, 0.05])
+    done_button = Button(done_ax, "Done")
+    done_button.on_clicked(on_done)
+
+    plt.tight_layout()
+    plt.show()
+
+    return np.array(points)
+
+
 
 
