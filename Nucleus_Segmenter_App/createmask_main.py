@@ -103,9 +103,11 @@ def composite_loss(y_true, y_pred, alpha=0.7, beta=0.3, lambda1=0.5, lambda2=0.5
 
 if __name__ == '__main__':
     model_path = r"C:\Users\jason\PycharmProjects\nucleus_outline\unet\models\rn34\uint16\RN34_NSM_hela_jpg_V1.keras"
-    mask_output_path = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\raw_data\2025-04-03_HelaS3_H3-2-Halo_FA\masks"
-    brightfield_images = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\raw_data\2025-04-03_HelaS3_H3-2-Halo_FA\BF_images\noTreatment"
-    cleaned_movies = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI_SMI1\raw_data\2025-04-03_HelaS3_H3-2-Halo_FA\2025-04-03_HeLaS3_H3-2-Halo_c25_noTreatment\cleaned_movies"
+    # model_path = r"C:\Users\jason\PycharmProjects\nucleus_outline\RPE1_data\models\RN34_NSM_RPE1_V2.keras"
+
+    mask_output_path = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI2\raw_data\2025-07-11_HeLaS3_H3-2-Halo_c25_ActD_peri\masks\DMSO"
+    brightfield_images = r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI2\raw_data\2025-07-11_HeLaS3_H3-2-Halo_c25_ActD_peri\BF_images\DMSO"
+    cleaned_movies = (r"C:\Users\jason\OneDrive\Documents\MaeshimaLab\experiments\SNI2\raw_data\2025-07-11_HeLaS3_H3-2-Halo_c25_ActD_peri\Movies\DMSO\cleaned_movies")
 
     bf_images_to_movies_index_formula = "int(index / 2)"
 
